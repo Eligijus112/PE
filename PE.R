@@ -249,7 +249,7 @@ for ( i in 1:1000){
 mean(BETA2)
 mean(BETA1)
 
-#1.15
+#1.14
 
 BETA1 <- numeric()
 BETA2 <- numeric()
@@ -285,5 +285,109 @@ for(j in 1:1000){
 }
 
 hist(T.value)
-## bla bla
-## octopussycat
+quantile(T.value, c(.01, .05, .1))
+
+#1.16 exercise
+
+n  <- 10000
+rc <- n %>% rcauchy
+rc %>% cummax %>% plot
+rc %>% cummin %>% plot
+
+mean.rc   <- numeric()
+var.rc    <- numeric()
+median.rc <- numeric()
+
+for(i in 1:n){
+  mean.rc[i]   <- rc[1:i] %>% mean
+  var.rc[i]    <- rc[1:i] %>% var
+  median.rc[i] <- rc[1:i] %>% median
+  cat(i, "\n")
+  }
+par(mfrow=c(1,3))
+mean.rc   %>% plot(type="l")
+var.rc    %>% plot(type="l")
+median.rc %>% plot(type="l")
+
+
+#1.17 (work in progress)
+
+n <- 1000 #number of ships
+arrive.time <- numeric()
+unload.time <- numeric()
+laiveliai   <- matrix(ncol=2, nrow=n) %>% as.data.frame
+for(i in 1:n){
+arrive.time[i] <- runif(1, min=15, max=145) %>% round(digits=0)
+unload.time[i] <- runif(1, min=45, max=90 ) %>% round(digits=0)
+laiveliai[i, ] <- c(arrive.time[i], unload.time[i])
+}
+laiveliai[1,1] <- 0    #starting time
+colnames(laiveliai)  <- c("Arrive", "Unload")
+row.names(laiveliai) <- paste0("laivas_", 1:n)
+
+##uniform laiveliu laukimo laikas
+waiting.time <- numeric()
+for(i in 2:n){
+  if(laiveliai[i-1, 2]<laiveliai[i, 1]) waiting.time[i] <- 0 
+  else waiting.time[i] <- laiveliai[i-1, 2] - laiveliai[i, 1] 
+  cat(rownames(laiveliai)[i], "lauke", waiting.time[i], "min \n")
+}
+mean(laiveliai[, 1]) # vidutinis laivo uzsibuvimas uoste
+max(laiveliai[, 1])  # maksimalus laivo laikas uoste
+
+mean(waiting.time[1:n], na.rm=T) # vidutinis laukimo laikas
+max(waiting.time, na.rm=T)       # maksimalus laukimo laikas
+
+idle.time  <- laiveliai[2:n,1] - laiveliai[1:(n-1), 2] # teigiamos koordinates rodo, kiek laiko uoste nebuvo laivo tarp iskrovimu
+sum.ships  <- 0
+for(j in 1:length(idle.time)){
+  if(idle.time[j]>0) sum.ships <- sum(sum.ships, idle.time[j])
+}
+
+total.time <- laiveliai[, 1] %>% abs %>% sum
+
+perct.idle <- sum.ships*100/total.time
+
+#1.18 exercise
+
+fi=seq(0,2*pi,length.out=6);fi
+c.fi=cos(fi)
+s.fi=sin(fi)
+c.fi; s.fi
+plot(c.fi,s.fi)
+for(i in 1:5)
+{
+  segments(c.fi[i],s.fi[i],c.fi[i+1],s.fi[i+1]) 
+  segments(0,0,c.fi[i],s.fi[i]) 
+}
+polygon(c(0,c.fi[1],c.fi[2],0),c(0,s.fi[1],s.fi[2],
+                                 0),col=2)
+
+u <- c(1, 0)
+v <- c(c.fi[2], s.fi[2])
+coord.matrix <- matrix(c(u,v), ncol=2, nrow=2)
+
+x.plot <- numeric()
+y.plot <- numeric()
+for(i in 1:1000){
+x <- runif(1)
+y <- runif(1)
+if(x+y>1) {
+  x <- NA 
+  y <- NA
+}
+x.plot[i] <- t(coord.matrix %*% as.matrix(c(x,y)))[1, 1]
+y.plot[i] <- t(coord.matrix %*% as.matrix(c(x,y)))[1, 2]
+}
+
+x.plot <- x.plot[!is.na(x.plot)]
+y.plot <- y.plot[!is.na(y.plot)]
+points(x.plot, y.plot)
+
+## filling the whole pentagon
+for(j in 1:length(x.plot)){
+theta=sample(0:5, 1)*(2*pi/5)
+R = matrix(c(cos(theta), sin(theta), -sin(theta), cos(theta)), ncol=2, nrow=2)
+ppqq <- as.matrix(R %*% t(as.matrix(cbind(x.plot[j], y.plot[j]))))
+points(t(ppqq), col= "blue")
+}
