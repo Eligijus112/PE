@@ -1,3 +1,11 @@
+library(tidyr)
+library(dplyr)
+library(plyr)
+
+##################
+### 1 chapter ####
+##################
+
 # 1.3 exercise 
 
 Nsim <- 100000
@@ -310,43 +318,71 @@ var.rc    %>% plot(type="l")
 median.rc %>% plot(type="l")
 
 
-#1.17 (work in progress)
+#1.17 The harbour system (uniform distribution)
 
-n <- 1000 #number of ships
-arrive.time <- numeric()
-unload.time <- numeric()
-laiveliai   <- matrix(ncol=2, nrow=n) %>% as.data.frame
-for(i in 1:n){
-arrive.time[i] <- runif(1, min=15, max=145) %>% round(digits=0)
-unload.time[i] <- runif(1, min=45, max=90 ) %>% round(digits=0)
-laiveliai[i, ] <- c(arrive.time[i], unload.time[i])
+harbour.system <- function(iterations, nr.of.ships, arrive.time, min.arrive, max.arrive,  unload.time, min.unload, max.unload, ...){
+final.results <- matrix(nrow=iterations, ncol=5) %>% as.data.frame
+for(j in 1:iterations){
+laiveliai   <- matrix(ncol=4, nrow=n) %>% as.data.frame
+colnames(laiveliai)  <- c("Between", "Unload", "Arrive" ,"Finish")
+row.names(laiveliai) <- paste0("laivas_", 1:(nr.of.ships))
+laiveliai[1, 1:2] <- c(1 %>% arrive.time(min=min.arrive, max=max.arrive), 1 %>% unload.time(min=min.unload, max=max.unload)) %>% round(digits=0)
+laiveliai[1, "Arrive"]   <- laiveliai[1, 1]
+laiveliai[1, "Finish"]   <- sum(laiveliai[1,2], laiveliai[1,1])
+HARTIME  <- laiveliai[1, "Unload"]
+MAXHAR   <- laiveliai[1, "Unload"]
+WAITIME  <- 0
+MAXWAIT  <- 0
+IDLETIME <- laiveliai[1, "Arrive"]
+
+timediff <- numeric()
+idle     <- numeric()
+wait     <- numeric()
+start    <- numeric()
+finish   <- numeric()
+harbor   <- numeric()
+for(i in 2:(nr.of.ships)){
+  
+  laiveliai[i, 1] <- 1 %>% arrive.time(min=min.arrive, max=max.arrive) %>% round(digits=0)
+  laiveliai[i, 2] <- 1 %>% unload.time(min=min.unload, max=max.unload) %>% round(digits=0)
+  laiveliai[i, "Arrive"] <- laiveliai[i-1, "Arrive"] + laiveliai[i, "Between"]
+  timediff[i] <- laiveliai[i, "Arrive"] - laiveliai[i-1, "Finish"]
+  
+  if(timediff[i]<0){  
+    wait[i] <- -1*timediff[i]
+    idle[i] <- 0
+  }
+  if(timediff[i]>=0){ 
+    wait[i] <- 0
+    idle[i] <- timediff[i]
+  }
+  
+  start[i]  <- laiveliai[i, "Arrive"] + wait[i]
+  laiveliai[i, "Finish"] <- start[i] + laiveliai[i, "Unload"]
+  harbor[i] <- wait[i] + laiveliai[i, "Unload"]
+  HARTIME   <- sum(harbor, na.rm=T)
+  
+  if(harbor[i]>MAXHAR) MAXHAR <- harbor[i]
+  if(wait[i]> MAXWAIT) MAXWAIT <- wait[i] 
+  cat(laiveliai[i,1], laiveliai[i, 2], wait[i], idle[i], "\n")
 }
-laiveliai[1,1] <- 0    #starting time
-colnames(laiveliai)  <- c("Arrive", "Unload")
-row.names(laiveliai) <- paste0("laivas_", 1:n)
 
-##uniform laiveliu laukimo laikas
-waiting.time <- numeric()
-for(i in 2:n){
-  if(laiveliai[i-1, 2]<laiveliai[i, 1]) waiting.time[i] <- 0 
-  else waiting.time[i] <- laiveliai[i-1, 2] - laiveliai[i, 1] 
-  cat(rownames(laiveliai)[i], "lauke", waiting.time[i], "min \n")
+WAITIME  <- sum(wait, na.rm=T)
+IDLETIME <- sum(idle, na.rm=T)
+avg.HARTIME  <- HARTIME/n
+avg.WAITIME  <- WAITIME/n
+prc.IDLETIME <- IDLETIME/laiveliai[n, "Finish"]
+
+final.results[j, ] <- c(avg.HARTIME, MAXHAR, avg.WAITIME, MAXWAIT, prc.IDLETIME*100 %>% round(digits=2))
 }
-mean(laiveliai[, 1]) # vidutinis laivo uzsibuvimas uoste
-max(laiveliai[, 1])  # maksimalus laivo laikas uoste
+colnames(final.results) <- c("Average time in harbour", "Max time in Harbour",
+                             "Average waiting time", "Max waiting time", "Perc of time beeing idle")
 
-mean(waiting.time[1:n], na.rm=T) # vidutinis laukimo laikas
-max(waiting.time, na.rm=T)       # maksimalus laukimo laikas
-
-idle.time  <- laiveliai[2:n,1] - laiveliai[1:(n-1), 2] # teigiamos koordinates rodo, kiek laiko uoste nebuvo laivo tarp iskrovimu
-sum.ships  <- 0
-for(j in 1:length(idle.time)){
-  if(idle.time[j]>0) sum.ships <- sum(sum.ships, idle.time[j])
+return(final.results)
 }
 
-total.time <- laiveliai[, 1] %>% abs %>% sum
-
-perct.idle <- sum.ships*100/total.time
+table  <- harbour.system(10, 100, runif, 15, 145, runif, 45, 90) 
+table1 <- harbour.system(10, 100, runif, 15, 145, runif, 45, 60) # here you can see the results and compare them
 
 #1.18 exercise
 
@@ -391,3 +427,82 @@ R = matrix(c(cos(theta), sin(theta), -sin(theta), cos(theta)), ncol=2, nrow=2)
 ppqq <- as.matrix(R %*% t(as.matrix(cbind(x.plot[j], y.plot[j]))))
 points(t(ppqq), col= "blue")
 }
+
+#########################
+##### BOOTSTRAPING ######
+#########################
+
+set.seed(1)
+sample(micex,replace=TRUE) 
+micex <- read.table(file.choose(), header=F, check.names=F)
+micex <- apply(micex, c(1,2), as.numeric)
+b.median1 <- function(data, B=100) {
+  resamples <- lapply(1:B, function(i) sample(data, replace=T))
+  r.median <- sapply(resamples, median)
+  std.err <- sqrt(var(r.median))
+  list(std.err=std.err, resamples=resamples, medians=r.median)
+}
+set.seed(15)
+b.med1=b.median1(micex)
+b.med1$std.err
+
+
+##2.2 exercise
+
+## example ########
+
+# Bootstrap 95% CI for regression coefficients
+library(boot)
+# function to obtain regression coefficients
+bs <- function(formula, data, indices) {
+  d <- data[indices,] # allows boot to select sample
+  fit <- lm(formula, data=d)
+  return(coef(fit))
+}
+# bootstrapping with 1000 replications
+results <- boot(data=mtcars, statistic=bs,
+                R=1000, formula=mpg~wt+disp)
+# view results
+results
+plot(results, index=1) # intercept
+plot(results, index=2) # wt
+plot(results, index=3) # disp
+# get 95% confidence intervals
+boot.ci(results, type="bca", index=1) # intercept 
+boot.ci(results, type="bca", index=2) # wt
+boot.ci(results, type="bca", index=3) # disp 
+
+####################################
+
+results <- boot(data=mtcars, statistic=bs,
+                R=1000, formula=mpg~wt+disp)
+N <- length(mtcars[, 1])
+
+r.sq <- numeric()
+for(i in 1:1000){
+  index    <- sample(1:N, N, replace=TRUE) 
+  new.data <- mtcars[index, ]
+  r.sq[i]  <- summary(lm(mpg~wt+disp, data=new.data))$r.squared
+}
+hist(r.sq)
+abline(v=summary(lm(mpg~wt+disp, data=mtcars))$r.squared, col="blue")
+sorted <- sort(r.sq)
+plot(sorted[25:975])
+sorted[25]    #95 proc. confidence interval 
+sorted[975]   #95 proc. confidence interval
+
+##2.3 exercise (not yet finished)
+
+library(MASS)
+data(galaxies)
+(gal <- galaxies/1000)
+hist(gal, breaks=seq(5,35,by=2.5),freq=FALSE,ylim=c(0,0.16))
+lines(density(gal)) 
+m <- median(gal)
+#i)
+eps     <- 0.01
+index   <- which(round(density(gal)$"x", digits=2)>=20.83-eps & round(density(gal)$"x", digits=2)<=20.83+eps)
+y.value <- density(gal)$"y"[index]
+
+var.boot <- sqrt(1/4*length(gal)*y.value)
+
