@@ -318,15 +318,21 @@ var.rc    %>% plot(type="l")
 median.rc %>% plot(type="l")
 
 
-#1.17 The harbour system (uniform distribution)
+#1.17 The harbour system (uniform distribution and exponential distribution)
 
-harbour.system <- function(iterations, nr.of.ships, arrive.time, min.arrive, max.arrive,  unload.time, min.unload, max.unload, ...){
+harbour.system <- function(iterations, nr.of.ships, min.arrive,
+                           max.arrive, min.unload, max.unload, type="Uniform",
+                           rate.arrive=NULL, rate.unload=NULL, ...){
 final.results <- matrix(nrow=iterations, ncol=5) %>% as.data.frame
 for(j in 1:iterations){
 laiveliai   <- matrix(ncol=4, nrow=n) %>% as.data.frame
 colnames(laiveliai)  <- c("Between", "Unload", "Arrive" ,"Finish")
 row.names(laiveliai) <- paste0("laivas_", 1:(nr.of.ships))
-laiveliai[1, 1:2] <- c(1 %>% arrive.time(min=min.arrive, max=max.arrive), 1 %>% unload.time(min=min.unload, max=max.unload)) %>% round(digits=0)
+if(type=="Exponential"){
+  laiveliai[1, 1:2] <- c(1 %>% rexp(rate=1/rate.arrive) %>% round(digits=0), 1 %>% rexp(rate=1/rate.unload) %>% round(digits=0))
+                         }else{
+laiveliai[1, 1:2] <- c(1 %>% runif(min=min.arrive, max=max.arrive), 
+                       1 %>% runif(min=min.unload, max=max.unload)) %>% round(digits=0)}
 laiveliai[1, "Arrive"]   <- laiveliai[1, 1]
 laiveliai[1, "Finish"]   <- sum(laiveliai[1,2], laiveliai[1,1])
 HARTIME  <- laiveliai[1, "Unload"]
@@ -342,9 +348,13 @@ start    <- numeric()
 finish   <- numeric()
 harbor   <- numeric()
 for(i in 2:(nr.of.ships)){
-  
-  laiveliai[i, 1] <- 1 %>% arrive.time(min=min.arrive, max=max.arrive) %>% round(digits=0)
-  laiveliai[i, 2] <- 1 %>% unload.time(min=min.unload, max=max.unload) %>% round(digits=0)
+  if(type=="Exponential"){
+    laiveliai[i, 1] <- 1 %>% rexp(rate=1/rate.arrive) %>% round(digits=0)
+    laiveliai[i, 2] <- 1 %>% rexp(rate=1/rate.unload) %>% round(digits=0)
+    }else{
+  laiveliai[i, 1] <- 1 %>% runif(min=min.arrive, max=max.arrive) %>% round(digits=0)
+  laiveliai[i, 2] <- 1 %>% runif(min=min.unload, max=max.unload) %>% round(digits=0)
+    }
   laiveliai[i, "Arrive"] <- laiveliai[i-1, "Arrive"] + laiveliai[i, "Between"]
   timediff[i] <- laiveliai[i, "Arrive"] - laiveliai[i-1, "Finish"]
   
@@ -381,8 +391,8 @@ colnames(final.results) <- c("Average time in harbour", "Max time in Harbour",
 return(final.results)
 }
 
-table  <- harbour.system(10, 100, runif, 15, 145, runif, 45, 90) 
-table1 <- harbour.system(10, 100, runif, 15, 145, runif, 45, 60) # here you can see the results and compare them
+table  <- harbour.system(10, 100, 15, 145, 45, 90) 
+table1 <- harbour.system(10, 100, rate.arrive=50, rate.unload=50, type="Exponential") # here you can see the results and compare them
 
 #1.18 exercise
 
