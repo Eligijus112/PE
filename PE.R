@@ -353,8 +353,9 @@ median.rc %>% plot(type="l")
 
 harbour.system <- function(iterations, nr.of.ships, min.arrive,
                            max.arrive, min.unload, max.unload, type="Uniform",
-                           rate.arrive=NULL, rate.unload=NULL, ...){
-final.results <- matrix(nrow=iterations, ncol=5) %>% as.data.frame
+                           rate.arrive=NULL, rate.unload=NULL, comments=TRUE, ...){
+results <- list()
+final.results <- matrix(nrow=iterations, ncol=7) %>% as.data.frame
 for(j in 1:iterations){
 laiveliai   <- matrix(ncol=4, nrow=nr.of.ships) %>% as.data.frame
 colnames(laiveliai)  <- c("Between", "Unload", "Arrive" ,"Finish")
@@ -378,6 +379,8 @@ wait     <- numeric()
 start    <- numeric()
 finish   <- numeric()
 harbor   <- numeric()
+queue    <- numeric(nr.of.ships)
+
 for(i in 2:(nr.of.ships)){
   if(type=="Exponential"){
     laiveliai[i, 1] <- 1 %>% rexp(rate=1/rate.arrive) %>% round(digits=0)
@@ -398,33 +401,50 @@ for(i in 2:(nr.of.ships)){
     idle[i] <- timediff[i]
   }
   
-  start[i]  <- laiveliai[i, "Arrive"] + wait[i]
+  if(wait[i]!=0){ 
+    tmp <- laiveliai[1:i, c("Arrive", "Finish")]
+    if(length(which(tmp[1:(i-1), "Finish"] > tmp[i, "Arrive"]))==0) queue[i] <- 1              
+    else queue[i] <- length(which(tmp[1:(i-1), "Finish"] > tmp[i, "Arrive"]))               
+  } else queue[i] <- 0 
+  start[i]   <- laiveliai[i, "Arrive"] + wait[i]
   laiveliai[i, "Finish"] <- start[i] + laiveliai[i, "Unload"]
-  harbor[i] <- wait[i] + laiveliai[i, "Unload"]
-  HARTIME   <- sum(harbor, na.rm=T)
+  harbor[i]  <- wait[i] + laiveliai[i, "Unload"]
+  HARTIME    <- sum(harbor, na.rm=T)
   
   if(harbor[i]>MAXHAR) MAXHAR <- harbor[i]
   if(wait[i]> MAXWAIT) MAXWAIT <- wait[i] 
-  cat(laiveliai[i,1], laiveliai[i, 2], wait[i], idle[i], "\n")
+  if(comments==TRUE){ 
+    if(queue[i]==1) cat("When", i, "ship arrived it was the first in line\n")
+    else{ if(queue[i-1]==0) cat("Ship", i, "didnt have to wait\n")
+          else  cat("When", i, "ship arrived there were ",queue[i-1], "ships waiting\n")
+   
+    }
+  }
 }
-
 WAITIME  <- sum(wait, na.rm=T)
 IDLETIME <- sum(idle, na.rm=T)
 avg.HARTIME  <- HARTIME/nr.of.ships
 avg.WAITIME  <- WAITIME/nr.of.ships
 prc.IDLETIME <- IDLETIME/laiveliai[nr.of.ships, "Finish"]
+MAXqueue     <- max(queue)
+AVGqueue     <- mean(queue)
 
-final.results[j, ] <- c(avg.HARTIME, MAXHAR, avg.WAITIME, MAXWAIT, prc.IDLETIME*100 %>% round(digits=2))
+final.results[j, ] <- c(avg.HARTIME, MAXHAR, avg.WAITIME, MAXWAIT, prc.IDLETIME*100, MAXqueue, AVGqueue %>% round(digits=2))
 }
 colnames(final.results) <- c("Average time in harbour", "Max time in Harbour",
-                             "Average waiting time", "Max waiting time", "Perc of time beeing idle")
-
-return(final.results)
+                             "Average waiting time", "Max waiting time", "Perc of time beeing idle",
+                             "Longest queue", "Average queue")
+results[[1]] <- final.results
+results[[2]] <- laiveliai
+return(results)
 }
 
-table  <- harbour.system(10, 100, 15, 145, 45, 90) 
-table1 <- harbour.system(10, 100, rate.arrive=50, rate.unload=50, type="Exponential") # here you can see the results and compare them
-
+table     <- harbour.system(10, 100, 15, 145, 45, 90)
+results   <- table[[1]]
+proccess  <- table[[2]] 
+table1       <- harbour.system(10, 100, rate.arrive=50, rate.unload=50, type="Exponential", comments=FALSE) 
+results.exp  <- table1[[1]]
+proccess.exp <- table1[[2]]
 #1.18 exercise
 
 fi=seq(0,2*pi,length.out=6);fi
