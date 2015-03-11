@@ -356,7 +356,7 @@ harbour.system <- function(iterations, nr.of.ships, min.arrive,
                            rate.arrive=NULL, rate.unload=NULL, ...){
 final.results <- matrix(nrow=iterations, ncol=5) %>% as.data.frame
 for(j in 1:iterations){
-laiveliai   <- matrix(ncol=4, nrow=n) %>% as.data.frame
+laiveliai   <- matrix(ncol=4, nrow=nr.of.ships) %>% as.data.frame
 colnames(laiveliai)  <- c("Between", "Unload", "Arrive" ,"Finish")
 row.names(laiveliai) <- paste0("laivas_", 1:(nr.of.ships))
 if(type=="Exponential"){
@@ -410,9 +410,9 @@ for(i in 2:(nr.of.ships)){
 
 WAITIME  <- sum(wait, na.rm=T)
 IDLETIME <- sum(idle, na.rm=T)
-avg.HARTIME  <- HARTIME/n
-avg.WAITIME  <- WAITIME/n
-prc.IDLETIME <- IDLETIME/laiveliai[n, "Finish"]
+avg.HARTIME  <- HARTIME/nr.of.ships
+avg.WAITIME  <- WAITIME/nr.of.ships
+prc.IDLETIME <- IDLETIME/laiveliai[nr.of.ships, "Finish"]
 
 final.results[j, ] <- c(avg.HARTIME, MAXHAR, avg.WAITIME, MAXWAIT, prc.IDLETIME*100 %>% round(digits=2))
 }
