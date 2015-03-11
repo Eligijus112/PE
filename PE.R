@@ -212,6 +212,37 @@ saveGIF({
   animate.integral(inte, 0.1, 2.1) 
 }, interval = 0.05, movie.name = "customf.gif", ani.width = 700, ani.height = 700)
 
+#1.10 exercise
+
+#1)
+integrate(Vectorize(function(y) integrate(function(x) abs(x-y), -1, 1)$value), -1, 1)
+
+#2) 
+n <- 15000
+x <- runif(n, -1, 1)
+y <- runif(n, -1, 1)
+mean(4*abs(x-y))
+
+
+#1.11 exercise
+
+library(MASS)
+library(mvtnorm)
+n=1000
+z=numeric()
+zz=numeric()
+cov <- matrix(c(9,4,4,4), nrow=2, ncol=2)
+N<-rmvnorm(n, rep(0, 2), cov)
+f <- function(r){
+  for(i in 1:n){ 
+    z[i] =sqrt(N[i,1]^2 + N[i,2]^2)
+    zz[i]=z[i]<r
+  }
+  return(sum(zz)/n)
+}
+
+f(1)
+
 #1.12 exercise
 
 set.seed(2)
