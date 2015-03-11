@@ -351,7 +351,7 @@ median.rc %>% plot(type="l")
 
 #1.17 The harbour system (uniform distribution and exponential distribution)
 
-harbour.system <- function(iterations, nr.of.ships, min.arrive,
+harbor.system <- function(iterations, nr.of.ships, min.arrive,
                            max.arrive, min.unload, max.unload, type="Uniform",
                            rate.arrive=NULL, rate.unload=NULL, comments=TRUE, ...){
 results <- list()
@@ -439,10 +439,10 @@ results[[2]] <- laiveliai
 return(results)
 }
 
-table     <- harbour.system(10, 100, 15, 145, 45, 90)
+table     <- harbor.system(10, 100, 15, 145, 45, 90)
 results   <- table[[1]]
 proccess  <- table[[2]] 
-table1       <- harbour.system(10, 100, rate.arrive=50, rate.unload=50, type="Exponential", comments=FALSE) 
+table1       <- harbor.system(10, 100, rate.arrive=50, rate.unload=50, type="Exponential", comments=FALSE) 
 results.exp  <- table1[[1]]
 proccess.exp <- table1[[2]]
 #1.18 exercise
