@@ -6,6 +6,8 @@ library(plyr)
 ### 1 chapter ####
 ##################
 
+# 1.1 exercise
+
 # 1.3 exercise 
 
 Nsim <- 100000
@@ -406,6 +408,7 @@ for(i in 2:(nr.of.ships)){
     if(length(which(tmp[1:(i-1), "Finish"] > tmp[i, "Arrive"]))==0) queue[i] <- 1              
     else queue[i] <- length(which(tmp[1:(i-1), "Finish"] > tmp[i, "Arrive"]))               
   } else queue[i] <- 0 
+  
   start[i]   <- laiveliai[i, "Arrive"] + wait[i]
   laiveliai[i, "Finish"] <- start[i] + laiveliai[i, "Unload"]
   harbor[i]  <- wait[i] + laiveliai[i, "Unload"]
@@ -428,8 +431,8 @@ avg.WAITIME  <- WAITIME/nr.of.ships
 prc.IDLETIME <- IDLETIME/laiveliai[nr.of.ships, "Finish"]
 MAXqueue     <- max(queue)
 AVGqueue     <- mean(queue)
-
-final.results[j, ] <- c(avg.HARTIME, MAXHAR, avg.WAITIME, MAXWAIT, prc.IDLETIME*100, MAXqueue, AVGqueue %>% round(digits=2))
+plot(queue, type="l")
+final.results[j, ] <- c(avg.HARTIME, MAXHAR, avg.WAITIME, MAXWAIT, prc.IDLETIME*100, MAXqueue, AVGqueue) %>% round(digits=2)
 }
 colnames(final.results) <- c("Average time in harbour", "Max time in Harbour",
                              "Average waiting time", "Max waiting time", "Perc of time beeing idle",
@@ -442,9 +445,15 @@ return(results)
 table     <- harbor.system(10, 100, 15, 145, 45, 90)
 results   <- table[[1]]
 proccess  <- table[[2]] 
-table1       <- harbor.system(10, 100, rate.arrive=50, rate.unload=50, type="Exponential", comments=FALSE) 
+table1       <- harbor.system(10, 100, rate.arrive=(15+145)/2, rate.unload=(45+90)/2, type="Exponential", comments=FALSE) 
 results.exp  <- table1[[1]]
 proccess.exp <- table1[[2]]
+
+par <- c(4.5,12.5)
+pdf("results.pdf", height=par[1], width=par[2])
+grid.table(results, rows=NULL)
+dev.off()
+
 #1.18 exercise
 
 fi=seq(0,2*pi,length.out=6);fi
@@ -552,18 +561,140 @@ plot(sorted[25:975])
 sorted[25]    #95 proc. confidence interval 
 sorted[975]   #95 proc. confidence interval
 
-##2.3 exercise (not yet finished)
+##2.3 exercise 
 
 library(MASS)
 data(galaxies)
 (gal <- galaxies/1000)
 hist(gal, breaks=seq(5,35,by=2.5),freq=FALSE,ylim=c(0,0.16))
-lines(density(gal)) 
-m <- median(gal)
-#i)
-eps     <- 0.01
-index   <- which(round(density(gal)$"x", digits=2)>=20.83-eps & round(density(gal)$"x", digits=2)<=20.83+eps)
-y.value <- density(gal)$"y"[index]
+plot(density(gal, from=20, to=21))
 
-var.boot <- sqrt(1/4*length(gal)*y.value)
+
+#i)
+m <- median(gal)
+dens    <- density(gal, from=20, to=21)
+index   <- which((dens$x %>% round(digits=3))==round(m, digits=3))
+f.value <- dens$y[index]
+
+#ii.)
+st.error <- sqrt(1/4*length(gal)*f.value)
+
+#iv-v.)
+
+tmp.median <- numeric()
+for(j in 1:1000){
+  index   <- sample(1:length(gal), length(gal), replace=T)
+  gal.tmp <- gal[index]
+  m       <- median(gal.tmp)
+  tmp.median[j] <- m
+}
+
+mean.boot <- tmp.median %>% median()
+sd.boot   <- tmp.median %>% var() %>% sqrt()
+
+confidence.int.boot <- c(mean.boot - 2*sd.boot, mean.boot + 2*sd.boot)
+confidence.int.boot
+tmp.median %>% density() %>% plot()
+tmp.median %>% hist()
+tmp.median %>% shapiro.test()
+
+#2.4
+
+library(MASS)
+data(shoes)
+A <- shoes$A
+B <- shoes$B
+C <- A - B
+
+#i)
+t.test(C) # A - B nera lygu nuliui
+
+#ii)
+
+m.boot   <- numeric()
+var.boot <- numeric()
+for (i in 1:1000){
+  index   <- sample(1:length(C), length(C), replace=T)
+  C.tmp   <- C[index]
+  m.boot[i]   <- C.tmp %>% mean()
+  var.boot[i] <- (length(C.tmp)-1)*var(C.tmp/length(C.tmp)^2)
+}
+
+m.boot
+
+###################
+#### 3 chapter ####
+###################
+
+#3.1
+
+x <- c(0, 1, 2, 3, 4)
+y <- c(1, 4, 3, 8, 9) 
+
+X         <- matrix(c(rep.int(1, length(x)), x), ncol=2) 
+X.t       <- X %>% t()
+XX.t      <- X.t %*% X
+X.inverse <- XX.t %>% solve() 
+part2     <- X.t %*% y 
+part1     <- X.inverse
+beta      <- part1 %*% part2
+
+yhat <- X %*% beta
+
+plot(x, y)
+lines(yhat, x=x, col="red")
+
+## using lm()
+
+x=0:4
+y=c(1,4,3,8,9)
+mod=lm(y~x)
+mod$res
+summary(mod) 
+
+### 3.2 
+
+e        <- y - yhat
+e.sq     <- t(e) %*% e
+var.hat  <- e.sq/(length(e)-2) 
+st.error <- var.hat %>% sqrt()
+
+cov(e)
+H <- X %*% part1 %*% X.t
+
+## 3.1 example
+
+library(car)
+data(Davis)
+par(mfrow=c(1,2))
+with(Davis,
+{
+  plot(height,weight)
+  boxplot(height,xlab="height")
+}
+) 
+
+wh.lm <- lm(weight~height, subset=sex=="F", data=Davis)
+summary(wh.lm)
+identify(height,weight) 
+par(mfrow=c(2,2))
+plot(wh.lm)
+
+library(car)
+data(Duncan)
+attach(Duncan)
+duncan.lm=lm(prestige~income+education)
+par(mfrow=c(1,1))
+plot(rstandard(duncan.lm),type="l")
+lines(rstudent(duncan.lm),col=2,lty=2)
+
+outlierTest(lm.D <- lm(prestige~income+education,data=Duncan),
+            labels=row.names(Duncan)) 
+plot(hatvalues(lm.D))
+abline(h=c(2,3)*3/45, lty=2) # dvi kritinës lin.
+
+plot(hatvalues(lm.D))
+
+
+
 
