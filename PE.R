@@ -8,6 +8,39 @@ library(plyr)
 
 # 1.1 exercise
 
+<<<<<<< HEAD
+=======
+Plot the pairs:
+# x=(x1,x3,x5,...)
+# y=(x2,x4,x6...)
+# plot(x,y)
+
+x=xx[seq(1, length(xx), 2)]
+y=xx[seq(2, length(xx), 2)]
+plot(x,y) #panasu i tolydu
+
+# Look at the estimate autocorrelation function
+
+acf(xx) #nepanasu i WN
+
+# 1.2 exercise. 
+
+set.seed(100) 
+ru=runif(100) 
+ru1=ru[seq(1,99,by=2)] 
+ru2=ru[seq(2,100,by=2)]
+
+RU1=ru[1:50]
+RU2=ru[51:100]
+
+cor.test(ru1, ru2)#nekoreliuoja
+cor.test(RU1, RU2)#nekoreliuoja
+cor.test(x, y)#nekoreliuoja
+
+# nelabai tikslu, nes sis testas naudojamas normaliesiems
+
+
+>>>>>>> origin/master
 # 1.3 exercise 
 
 Nsim <- 100000
