@@ -8,13 +8,22 @@ library(plyr)
 
 # 1.1 exercise
 
-<<<<<<< HEAD
-=======
-Plot the pairs:
 # x=(x1,x3,x5,...)
 # y=(x2,x4,x6...)
 # plot(x,y)
+uniform=function(n=10)
+{
+  x=numeric(n)
+  x[1]=1899 # seed, <2^31-1
+  mm=2^31-1
+  for(i in 1:(n-1))
+  {
+    x[i+1]=(65539*x[i])%%mm # c=0
+  }
+  x/mm
+} 
 
+xx=uniform(1000)
 x=xx[seq(1, length(xx), 2)]
 y=xx[seq(2, length(xx), 2)]
 plot(x,y) #panasu i tolydu
@@ -39,8 +48,6 @@ cor.test(x, y)#nekoreliuoja
 
 # nelabai tikslu, nes sis testas naudojamas normaliesiems
 
-
->>>>>>> origin/master
 # 1.3 exercise 
 
 Nsim <- 100000
@@ -225,13 +232,22 @@ lines(1:500,rep(pi,500))
 s[500] 
 
 #1.9 exercise
+
 fun <- function(x){
   y <- 1/(1 + sinh(2*x)*log(x)^2)
   return(y)
 }
-z  <- seq(0.1, 2.1, by=0.001)
-plot(fun(z), x=z, col="red", lwd=0.5) 
-lines(y=yfit, x=z, col="blue", lwd=2)
+
+draw.normal <- function(x, mean, sigma){
+  y <- (1/(sigma*sqrt(2*pi)))*exp(-(x-mean)^2/(2*sigma^2))
+  return(y)
+}
+
+draw.normal(z, 1, 0.4) %>% plot(x=z)
+fun(z) %>% lines(x=z, col="red", lwd=2)
+
+legend('topright', c("Gaussian", "Custom function") , lty=1, col=c('red', 'black'), bty='n', cex=.75, lwd=c(2,2))
+
 
 library(truncnorm)
 n=10000
@@ -263,21 +279,32 @@ mean(4*abs(x-y))
 
 library(MASS)
 library(mvtnorm)
-n=1000
-z=numeric()
-zz=numeric()
+
 cov <- matrix(c(9,4,4,4), nrow=2, ncol=2)
-N<-rmvnorm(n, rep(0, 2), cov)
-f <- function(r){
+N   <-rmvnorm(n, rep(0, 2), cov)
+
+f <- function(r, n, Variable){
+  x      <- numeric()
+  x.good <- numeric()
   for(i in 1:n){ 
-    z[i] =sqrt(N[i,1]^2 + N[i,2]^2)
-    zz[i]=z[i]<r
+    x[i]      <- sqrt(Variable[i,1]^2 + Variable[i,2]^2)
+    x.good[i] <- x[i]<r
   }
-  return(sum(zz)/n)
+  return(sum(x.good, na.rm=T)/n %>% sum(na.rm=T))
 }
 
-f(1)
+f(r=1, 1000, N)
 
+i <- 1
+for.plot <- numeric()
+for(j in seq(0.1, 3, by=0.01)){
+  if(i <=  (seq(0.1, 3, by=0.01) %>% length())){
+  for.plot[i] <- f(r=j, 1000, N)
+  }
+  i <- i+1
+}
+
+for.plot %>% plot(x=seq(0.1, 3, by=0.01))
 #1.12 exercise
 
 set.seed(2)
