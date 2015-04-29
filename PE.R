@@ -680,14 +680,22 @@ for (i in 1:1000){
   var.boot[i] <- (length(C.tmp)-1)*var(C.tmp/length(C.tmp)^2)
 }
 
-m.boot
+mean.fun <- function(d, i) {
+  n <- length(i)
+  c(mean(d[i]), (n-1)*var(d[i])/n^2)
+}
+shoes.boot <- boot(B-A, mean.fun, R=1000) 
 
-###################
-#### 3 chapter ####
-###################
+shoes.boot %>% boot.ci(type="stud")
+## because the confidence interval is not near 0.05, we conclude, that A - B is not equal to zero
+
+###################################################
+############## 3 chapter ##########################
+### Least squares methods and their diagnostics ###
+###################################################
 
 #3.1
-
+# OLS estimates by hand
 x <- c(0, 1, 2, 3, 4)
 y <- c(1, 4, 3, 8, 9) 
 
@@ -713,6 +721,7 @@ mod$res
 summary(mod) 
 
 ### 3.2 
+### Find the H matrix of the 3.1 exercise
 
 e        <- y - yhat
 e.sq     <- t(e) %*% e
@@ -751,10 +760,353 @@ lines(rstudent(duncan.lm),col=2,lty=2)
 outlierTest(lm.D <- lm(prestige~income+education,data=Duncan),
             labels=row.names(Duncan)) 
 plot(hatvalues(lm.D))
-abline(h=c(2,3)*3/45, lty=2) # dvi kritinës lin.
+abline(h=c(2,3)*3/45, lty=2) 
 
 plot(hatvalues(lm.D))
 
+plot(cookd(duncan.lm),type="h") 
+abline(h=4/42,lty=2) 
+identify(1:45,cookd(duncan.lm), 
+         row.names(Duncan))
+
+##3.3 exercise
+## Analyze the wh.lm model with respect to its residuals
+
+wh.lm <- lm(weight~height, subset=sex=="F", data=Davis)
+summary(wh.lm)
+plot(Davis$height, Davis$weight)
+abline(wh.lm, col="blue", lwd=2)
+# Clearly there is a leverage point here
+wh.lm %>% rstandard() %>% plot()
+wh.lm %>% cooks.distance() %>% plot()
+cook <- wh.lm %>% cooks.distance() 
+n <- wh.lm %>% cooks.distance() %>% length()
+text(x=1:n, cook, labels=1:n, cex=0.83, pos=1)
+# the fourth point is very likely to be an influantial point
+new.data <- Davis %>% filter(sex=="F")
+wh.lm.v2 <- lm(weight~height, subset=sex=="F", data=new.data[-4, ])
+wh.lm.v2 %>% summary()
+plot(Davis$height, Davis$weight)
+abline(wh.lm, col="blue", lwd=2)
+abline(wh.lm.v2, col="red", lwd=2)
+legend('bottomleft', c("With the 4th point", "Without the 4th point") , 
+       lty=1, col=c('blue', 'red'), bty='n', cex=.75, lwd=c(2,2))
+
+##3.4 exercise
+## Box - Cox transformation
+
+N=100 
+set.seed(1234) 
+x=runif(N,1,20) 
+eps=rnorm(N) 
+y1 <- (3-0.5*x+eps)^2        #seq 1 
+eps=rnorm(N) 
+y2 <- (1/0.5 - 3*x + eps)^2  #seq 2
+eps=rnorm(N) 
+y3 <- (3-0.5*x+eps)^4        #seq 3 
+plot(y3)
+
+box.cox <- function(liambda, y){
+  if(liambda==0) x <- log(y)
+  else x <- (y^liambda - 1)/liambda
+  return(x)
+}
+
+liambdas <- seq(-1 , 1, by= 0.5)
+par(mfrow=c(1, length(liambdas)))
+
+for(j in 1:length(liambdas)){
+  
+  y.custom <- box.cox(liambdas[j], y1)
+  plot(x, y.custom) 
+  title(main=c("labmda=",paste(liambdas[j])))
+  abline(lm(y.custom ~ x))
+}
+
+##3.2 example
+## Box - Cox 
+
+library(car) 
+data(Ornstein) 
+head(Ornstein) 
+
+mod.ornstein <- lm(interlocks + 1 ~ log(assets) + nation + sector, data=Ornstein) 
+summary(mod.ornstein) 
+
+attach(Ornstein) 
+par(mfrow=c(1,3)) 
+hist(interlocks) 
+qqPlot(mod.ornstein, pch=15) 
+plot(density(rstudent(mod.ornstein))) 
+
+boxCox(mod.ornstein, lambda = seq(0, 0.6, by=0.1))
+
+## Transformed model
+
+Ornstein1 <- transform(Ornstein, y1=bcPower(interlocks + 1, 0.2))
+                                             
+mod.ornstein.trans <- update(mod.ornstein, y1 ~ ., 
+                             data=Ornstein1) 
+summary(mod.ornstein.trans) 
+qqPlot(mod.ornstein.trans, pch=15) 
+
+## 3.5 exercise 
+## Further implementation of the Box - Cox transformation
+## We will analyse the duncan.lm model (3.1 example)
+library(car)
+data(Duncan)
+attach(Duncan)
+duncan.lm=lm(prestige~income+education)
+summary(duncan.lm)
+par(mfrow=c(1, 2))
+qqPlot(duncan.lm, pch=15) 
+plot(density(rstudent(duncan.lm))) ## the upper tail is skewed. Thus we should use the Box - Cox transformation
+
+boxCox(duncan.lm, lambda = seq(0, 1.2, by=0.1)) # the value that maximizes the ML function is about 0.6-0.8
+duncan.transformed <- transform(Duncan, y1=bcPower(prestige, 0.65))
+
+lm.tDuncan  <- update(duncan.lm, y1 ~ ., data=duncan.transformed) 
+summary(lm.tDuncan)
+dev.off()
+par(mfrow=c(1, 2))
+qqPlot(lm.tDuncan, pch=15) 
+plot(density(rstudent(lm.tDuncan))) 
 
 
+### 4 chapter #########
+## Robust regression ##
+
+x <- c(rnorm(16),-512,-200,15,1000)
+mn1 <- mean(x)
+mn2 <- mean(x, trim=0.05)
+
+set.seed(45) 
+x=rnorm(40,sd=10) 
+sort(x) 
+cat("mean(x)=",mean(x),"\n") 
+cat("mean(x,trim=0.05)=",mean(x,trim=0.05),"\n") 
+
+## 4.2 exercise 
+
+?anscombe
+data <- anscombe
+
+plot(data$x3, data$y3)
+mod <- lm(y3 ~ x3, data=data)
+summary(mod)
+abline(mod, col="red", lwd=2)
+
+## Removing outliers 
+
+grubbs.test(data$y3)
+which(data$y3==12.74)
+new.data <- data[-3, c("x3", "y3")]
+mod.1 <- lm(y3 ~ x3, data=new.data)
+abline(mod.1, col="blue", lwd=2)
+summary(mod.1)
+legend('topleft', c("Without outliers", "With outliers") , 
+       lty=1, col=c('blue', 'red'), bty='n', cex=.75, lwd=c(2,2))
+##
+
+## 4.2 example
+library(MASS) 
+library(car) # for data 
+
+mod.ls <- lm(prestige ~ income + education, data=Duncan) 
+summary(mod.ls) 
+
+mod.ls.2 <- update(mod.ls, subset=-c(6,16)) 
+summary(mod.ls.2) 
+
+mod.huber <- rlm(prestige ~ income + education, data=Duncan) 
+summary(mod.huber) 
+
+plot(mod.huber$w, ylab="Huber Weight") 
+smallweights <-  which(mod.huber$w < 0.8) 
+showLabels(1:45, mod.huber$w, rownames(Duncan), id.method = smallweights, id.cex = .6) 
+
+## 4.3 exercise
+
+data.dem <- read.table('http://www.mif.vu.lt/~rlapinskas/2014-2015/Ekonometrija%203k.%20pratybos/Data%20Ekonometrija.I/weakliem.txt')
+countries <- rownames(data.dem)
+data.dem <- cbind(countries, data.dem)
+
+#a) The gini coeficient is used to measure the distribution of wealth within a country.
+   #If gini is equal to 1 (or 100 in percentage form), then all the wealth(income) is in the hands of a single household.
+   #If gini is equal to 0, then all the household have the same wealth (income)
+
+   gini.countries <- data.dem[order(data.dem[, "gini"]), ][, "countries"] %>% as.character()
+
+#b)
+mod.w <- lm(secpay ~ gini, data=data.dem)
+summary(mod.w)
+plot(data.dem$gini, data.dem$secpay)
+abline(mod.w, col="red", lwd=2)
+
+#c)
+mod.inter <- lm(secpay ~ gini +  dem + dem*gini, data=data.dem)
+abline(mod.inter)
+mod.democracy <- lm(secpay ~ (gini) +dem, data=data.dem)
+summary(mod.democracy)
+abline(mod.democracy, col="blue")
+
+#d)
+nondemo=with(data.dem,data.dem[dem==0,])
+mod.n = lm(secpay~gini,data=nondemo)
+abline(mod.n)
+summary(mod.n)
+
+mod.n$res %>% plot()
+mod.n$res %>% shapiro.test() 
+qqPlot(mod.n, pch=15) 
+cook <- mod.n %>% cooks.distance()
+cook %>% plot()
+#we can conclude that the estimators in mod.n are biased
+
+#e) creating robus models
+library(robustbase)
+weights.h <- psi.huber(mod.n$res, 2*sd(mod.n$res))
+mod.r     <- lm(secpay ~ gini, weights=weights.h, data=nondemo)
+summary(mod.r)
+##
+cook <- mod.n %>% cooks.distance()
+cook %>% plot()
+abline(h=4/(length(cook)-2-1))
+text(x=1:length(cook), cook, labels=1:length(cook), cex=0.83, pos=1)
+# possible influantial points 5, 7, 26
+mod.e <- lm(secpay ~ gini, data=nondemo[-c(5, 7, 26), ])
+summary(mod.e)
+
+plot(nondemo$gini, nondemo$secpay)
+abline(mod.n, col="red")
+abline(mod.r, col="blue")
+abline(mod.e, col="green")
+
+## 4.3 example
+library(alr4) 
+data(landrent) 
+names(landrent)=c("rnt.till","cow.dens","prop.past"
+                  ,"lime","rnt.alf") 
+head(landrent) 
+alf.till=landrent$rnt.alf/landrent$rnt.till # create relative rent 
+# to make lime a factor  
+rent=data.frame(alf.till,landrent[,-4],lime=factor(landrent[,4])) 
+head(rent) 
+plot(rent[rent$lime==0,-6])  # lime==0 
+plot(rent[rent$lime==1,-6])  # lime==1 
+# or 
+library(lattice) 
+splom(~rent[,-6]|rent$lime)               # or 
+splom(~rent[,-6]|rent$lime,pscales=0)     # or 
+splom(~rent[,-6]|rent$lime,pscales=0, type = c("g","p", "smooth"))   
+# or (for superposition) 
+splom(~rent[,-6],pscales=0, type = c("g", "p", "smooth")) # grid,point,smooth 
+# or (including lime) 
+splom(~rent,pscales=0, type = c("g", "p"))
+
+## we want to create models rnt.alf and alf.till
+rent.lm41n <-lm(rnt.alf ~ rnt.till + cow.dens + lime + cow.dens:lime, data=rent)  
+summary(rent.lm41n) 
+
+rent.lm12m <- lm(alf.till ~ lime * cow.dens , data=rent) 
+summary(rent.lm12m) 
+
+##4.4 exercise 
+## identify influantial points of the models 
+cooks.lm41 <- rent.lm41n %>% cooks.distance() 
+plot(cooks.lm41)
+abline(h=4/(length(cook)-2-1), col="blue")
+text(x=1:length(cooks.lm41), cooks.lm41, labels=1:length(cooks.lm41), cex=0.83, pos=1)
+#point 5 may be influantial
+
+cooks.lm12 <- rent.lm12m %>% cooks.distance() 
+plot(cooks.lm12)
+abline(h=4/(length(cook)-2-1), col="blue")
+text(x=1:length(cooks.lm12), cooks.lm12, labels=1:length(cooks.lm12), cex=0.83, pos=1)
+#point 33 may be influantial
+
+
+########################################################
+## 5th chapter 
+## Non parametric regression
+data(mtcars)
+duom <- mtcars
+
+head(mtcars)  
+mtc = with(mtcars, mtcars[order(wt),]) 
+with(mtc, 
+{ 
+  plot(wt,mpg) 
+  mod.inv=lm(mpg~I(1/wt)) 
+  lines(wt,mod.inv$fit) 
+  cat("AIC.mod.inv=",AIC(mod.inv),"\n") 
+  mod.poly2=lm(mpg~wt+I(wt^2)) 
+  lines(wt,mod.poly2$fit,col=2) 
+  cat("AIC.mod.poly2=",AIC(mod.poly2), 
+      "\n") 
+  mod.poly3=lm(mpg~wt+I(wt^2)+I(wt^3)) 
+  lines(wt,mod.poly3$fit,col=3) 
+  cat("AIC.mod.poly3=",AIC(mod.poly3), 
+      "\n") 
+  legend(4.2,32,c("inv","poly2","poly3"), 
+         lty=1,col=1:3) 
+})
+
+##5.1 exercise
+data(ethanol)
+duom <- ethanol
+head(duom)
+
+poli.6.mod <- lm(NOx ~ poly(E, 6, raw=TRUE), data=duom)
+poli.6 <- lm(NOx ~ poly(E, 6, raw=TRUE), data=duom)$coef %>% polynomial()
+
+poli.2.mod <- lm(NOx ~ poly(E, 2, raw=TRUE), data=duom)
+poli.2 <- lm(NOx ~ poly(E, 2, raw=TRUE), data=duom)$coef %>% polynomial()
+
+poli.3.mod <- lm(NOx ~ poly(E, 3, raw=TRUE), data=duom)
+poli.3 <- lm(NOx ~ poly(E, 3, raw=TRUE), data=duom)$coef %>% polynomial()
+
+poli.4.mod <- lm(NOx ~ poly(E, 4, raw=TRUE), data=duom)
+poli.4 <- lm(NOx ~ poly(E, 4, raw=TRUE), data=duom)$coef %>% polynomial()
+
+cat(AIC(poli.6.mod), "\n")
+cat(AIC(poli.2.mod), "\n")
+cat(AIC(poli.3.mod), "\n")
+cat(AIC(poli.4.mod), "\n")
+
+plot(poli.4, xlim=c(0.5, 1.3), ylim=c(0, 4))
+lines(poli.3, col="blue")
+lines(poli.2, col="red")
+lines(poli.6, col="green")
+points(duom$E, duom$NOx,)
+
+## 5.2 example
+
+eth=with(ethanol,ethanol[order(E),]) 
+with(eth, 
+{ 
+  mod.nls=nls(NOx~a*exp(-b*(abs(E-c))^d), 
+              start=list(a=1,b=1,c=1,d=2)) 
+  print(summary(mod.nls)) 
+  plot(E,NOx,main="exponential nonlinear 
+       regression") 
+  lines(E,fitted(mod.nls)) 
+  cat("AIC.mod.nls=",AIC(mod.nls), 
+      "\n") 
+}) 
+
+## 5.2 exercise
+
+library(car)
+duom <- (USPop)
+head(duom)
+
+mod.nls=nls(population ~ a + b*10^(-12)*exp(c/100*year), 
+            start=list(a=-1, b=1, c=1), data=duom, control=nls.control(maxiter=1000)) 
+mod.nls
+summary(mod.nls)
+
+plot(duom$year, duom$population)
+lines(duom$year, fitted(mod.nls))
+lines(duom$year, -15 + 13.897*10^(-12)*exp(1.552/100*duom$year), col="blue")
 
