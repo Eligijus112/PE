@@ -1025,6 +1025,58 @@ abline(h=4/(length(cook)-2-1), col="blue")
 text(x=1:length(cooks.lm12), cooks.lm12, labels=1:length(cooks.lm12), cex=0.83, pos=1)
 #point 33 may be influantial
 
+## 4.5 exercise 
+## Lets say we know that points 5, 36 and 57 are influantial points. We will create various models to 
+## diminish their effects 
+
+library(alr4) 
+data(landrent) 
+names(landrent)=c("rnt.till","cow.dens","prop.past"
+                  ,"lime","rnt.alf") 
+head(landrent) 
+alf.till=landrent$rnt.alf/landrent$rnt.till # create relative rent 
+# to make lime a factor  
+rent=data.frame(alf.till,landrent[,-4],lime=factor(landrent[,4])) 
+
+rent.lm41n <-lm(rnt.alf ~ rnt.till + cow.dens + lime + cow.dens:lime, data=rent)  
+summary(rent.lm41n) 
+
+eliminate.points <- lm(rnt.alf ~ rnt.till + cow.dens + lime + cow.dens:lime, data=rent[-c(5, 36, 57), ])  
+summary(eliminate.points)
+# we can see that now all the explanatory variables are siginificant
+  
+weights.h <- psi.huber(rent.lm41n$res, 2*sd(rent.lm41n$res))
+mod.huber <- rlm(rnt.alf ~ rnt.till + cow.dens + lime + cow.dens:lime, data=rent)
+summary(mod.huber)
+
+## comparing the models:
+
+AIC.h  <- AIC(mod.huber)
+AIC.el <- AIC(eliminate.points)
+## model with the eliminated points gives a lower akaike
+res.el <- eliminate.points %>% stdres()
+plot(res.el)
+shapiro.test(res.el) ## appear to be normal
+
+res.hub <- mod.huber$residuals %>% as.numeric() %>% scale()
+res.hub %>% plot()
+shapiro.test(res.hub) ## not so normal. This should be expected because Huber weights do not change the 
+                      ## actual residuals.   
+
+## 4.6 exercise
+## plot the three fitted lines from exercise 4.2
+
+?anscombe
+data <- anscombe
+
+plot(data$x3, data$y3)
+mod   <- lm(y3 ~ x3, data=data)
+mod.2 <- lm(y3 ~ x3, data=data[-3, ])
+mod.h <- rlm(y3 ~ x3, data=data)
+summary(mod)
+abline(mod, col="red", lwd=2)
+abline(mod.2, col="blue", lwd=2)
+abline(mod.h, col="brown", lwd=2)
 
 ########################################################
 ## 5th chapter 
@@ -1101,12 +1153,59 @@ library(car)
 duom <- (USPop)
 head(duom)
 
-mod.nls=nls(population ~ a + b*10^(-12)*exp(c/100*year), 
-            start=list(a=-1, b=1, c=1), data=duom, control=nls.control(maxiter=1000)) 
+## exponential model
+
+mod.nls=nls(population ~ a + b*exp(c/100*year), 
+            start=list(a=-1, b=1, c=1), trace=TRUE, data=duom, control=nls.control(maxiter=1000)) 
 mod.nls
 summary(mod.nls)
 
 plot(duom$year, duom$population)
 lines(duom$year, fitted(mod.nls))
-lines(duom$year, -15 + 13.897*10^(-12)*exp(1.552/100*duom$year), col="blue")
+#lines(duom$year, -15 + 13.897*10^(-12)*exp(1.552/100*duom$year), col="blue")
 
+## logistic model 
+
+mod.nls.logic=nls(population ~ (a*100)/(1 + exp(b*(year - 1916))), 
+            start=list(a=1, b=-1), trace=TRUE, data=duom, control=nls.control(maxiter=1000)) 
+
+mod.nls.logic
+summary(mod.nls.logic)
+
+lines(duom$year, fitted(mod.nls.logic))
+
+## The exponential model is better
+
+## 5.3 example. LOESS
+
+library(car) # to reach Prestige 
+plot(prestige ~ income, xlab="Average Income", ylab
+     ="Prestige", data=Prestige) 
+with(Prestige, lines(lowess(income, prestige, f=0.5
+                            , iter=0), lwd=2)) 
+
+## 5.3 exercise
+
+data(ethanol)
+duom <- ethanol
+E   <- duom$E
+NOx <- duom$NOx
+plot(E, NOx)
+
+eth=with(ethanol,ethanol[order(E),]) 
+with(eth, 
+{ 
+  mod.nls=nls(NOx~a*exp(-b*(abs(E-c))^d), 
+              start=list(a=1,b=1,c=1,d=2)) 
+  print(summary(mod.nls)) 
+  plot(E,NOx,main="exponential nonlinear 
+       regression") 
+  lines(E,fitted(mod.nls), col="brown", lwd=2) 
+  cat("AIC.mod.nls=",AIC(mod.nls), 
+      "\n") 
+}) 
+
+lines(lowess(E, NOx), lwd=2, col="red")
+lines(poli.6, col="blue", lwd=2)
+
+##
