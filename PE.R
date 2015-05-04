@@ -1179,10 +1179,8 @@ lines(duom$year, fitted(mod.nls.logic))
 ## 5.3 example. LOESS
 
 library(car) # to reach Prestige 
-plot(prestige ~ income, xlab="Average Income", ylab
-     ="Prestige", data=Prestige) 
-with(Prestige, lines(lowess(income, prestige, f=0.5
-                            , iter=0), lwd=2)) 
+plot(prestige ~ income, xlab="Average Income", ylab="Prestige", data=Prestige) 
+with(Prestige, lines(lowess(income, prestige, f=0.5, iter=0), lwd=2)) 
 
 ## 5.3 exercise
 
@@ -1209,3 +1207,69 @@ lines(lowess(E, NOx), lwd=2, col="red")
 lines(poli.6, col="blue", lwd=2)
 
 ##
+## Curse of dimensionality 
+
+library(car) 
+library(stats) 
+Prest=Prestige[order(Prestige$income),] 
+attach(Prest) 
+par(mfrow=c(1,2)) 
+# univariate regression 
+mod.loess1=loess(prestige~income) 
+summary(mod.loess1)           # equivalent number of paramet
+ers ~ 6 
+plot(income,prestige) 
+lines(income,mod.loess1$fit) 
+lines(income,lm(prestige~poly(income,6))$fit,col=2)
+
+# twovariate regression 
+mod.loess2 <- loess(prestige~income+education) 
+summary(mod.loess2)  
+inc <- seq(min(income), max(income), len=25) 
+ed  <- seq(min(education), max(education), len=25) 
+newdata <- expand.grid(income=inc, education=ed) 
+fit.prestige <- matrix(predict(mod.loess2, newdata), 25, 25) 
+persp(inc, ed, fit.prestige, theta=45, phi=30, ticktype="detailed", 
+      xlab="Income", ylab="Education", zlab="Prestige", expand=2/3, 
+      shade=0.5) 
+
+## Splines 
+## 5.5 example
+set.seed(14)                  # set the seed to reproduce this example  
+e <- rnorm(200) 
+x <- runif(200) 
+y <- sin(2*pi*(1-x)^2)+x*e 
+
+sx <- sort(x) 
+fx <- sin(2*pi*(1-sx)^2) 
+plot(x,y) 
+lines(sx,fx,lwd=2) 
+lines(supsmu(x,y),lty=2,lwd=2,col=2)            # Friedman's very  fast  variable  span  
+                                                # bivariate  smoother 
+lines(ksmooth(x,y),lty=3,lwd=2,col=3)           #  kernel-type scatterplot smoother 
+lines(smooth.spline(x,y),lty=4,lwd=2,col=4)
+lines(loess.smooth(x,y),lty=5,lwd=2,col=5)  
+
+legend(0,2.2,c("perfect", "supsmu", "ksmooth", "smooth.spline", "loess"), 
+       lty=1:5,lwd=2,col=1:5, cex=0.6) 
+
+## 5.5 exercise
+
+y18 <- c(1:3, 5, 4, 7:3, 2*(2:5), rep(10, 4))  
+ind <- 1:length(y18) 
+xx  <- seq(1, length(y18), len = 201) 
+plot(ind, y18)
+mod.lm <- lm(y18 ~ ind)
+mod.lm %>% abline(col="blue", lty=1, lwd=2)
+
+f <- splinefun(ind, y18)
+f(ind) %>% lines(col="red", lty=2, lwd=2)
+
+smooth.spline(ind, y18) %>% lines(col="green", lty=3, lwd=2)
+legend("topleft",c("linear", "linear spline", "cubic spline"), 
+       lty=1:3,lwd=2,col=c("blue", "red", "green"), cex=0.7) 
+
+spar_0.2 <- smooth.spline(ind, y18, spar=0.2)
+lines(spar_0.2, col="coral", lty=4)
+
+
