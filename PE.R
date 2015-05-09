@@ -1216,8 +1216,7 @@ attach(Prest)
 par(mfrow=c(1,2)) 
 # univariate regression 
 mod.loess1=loess(prestige~income) 
-summary(mod.loess1)           # equivalent number of paramet
-ers ~ 6 
+summary(mod.loess1)           # equivalent number of parameters ~ 6 
 plot(income,prestige) 
 lines(income,mod.loess1$fit) 
 lines(income,lm(prestige~poly(income,6))$fit,col=2)
@@ -1271,5 +1270,50 @@ legend("topleft",c("linear", "linear spline", "cubic spline"),
 
 spar_0.2 <- smooth.spline(ind, y18, spar=0.2)
 lines(spar_0.2, col="coral", lty=4)
+
+## 5.6 exercise
+
+y18 <- c(1:3, 5, 4, 7:3, 2*(2:5), rep(10, 4))  
+ind <- 1:length(y18) 
+xx  <- seq(1, length(y18), len = 201) 
+plot(ind, y18)
+
+smooth.spline(ind, y18) %>% lines(col=5, lty=5)
+
+for(i in c(2, 4, 8)){
+  smooth.spline(ind, y18, nknots=10, df=i) %>% lines(col=i, lty=6, lwd=2)
+}
+
+## the smaller the df value is, the more spline represents a linear curve 
+
+plot(ind, y18)
+smooth.spline(ind, y18) %>% lines(col=1, lty=1)
+index <- 1
+for(j in c(4, 12, 36)){
+  index <- index + 1 
+  smooth.spline(ind, y18, nknots=j, df=8) %>% lines(col=index, lty=index, lwd=2)
+}
+
+## as the number of knots increase, the spline tends to better approximate the points
+
+# 5.7 exercise 
+# Atidute towards inequality ~ gdp + gini using loess
+
+data <- read.table('http://www.mif.vu.lt/~rlapinskas/2014-2015/Ekonometrija%203k.%20pratybos/Data%20Ekonometrija.I/weakliem.txt')
+mod.loess <- loess(secpay ~ gdp + gini , data=data) 
+fit.loes  <- mod.loess$fitted 
+gini      <- data$gini 
+gdp       <- data$gdp  
+
+gini.persp <- seq(min(gini), max(gini), len=length(fit.loes))
+gdp.persp  <- seq(min(gdp), max(gdp), len=length(fit.loes))
+newdata    <- expand.grid(gdp=gdp.persp, gini=gini.persp) 
+fit.persp  <- matrix(predict(mod.loess, newdata), length(fit.loes), length(fit.loes)) 
+
+persp(gini.persp, gdp.persp, fit.persp, theta=45, phi=20, ticktype="detailed", 
+      xlab="Gini", ylab="GDP", zlab="Atidute", expand=2/3, 
+      shade=0.5) 
+
+
 
 
