@@ -1234,6 +1234,7 @@ persp(inc, ed, fit.prestige, theta=45, phi=30, ticktype="detailed",
 
 ## Splines 
 ## 5.5 example
+
 set.seed(14)                  # set the seed to reproduce this example  
 e <- rnorm(200) 
 x <- runif(200) 
@@ -1314,6 +1315,227 @@ persp(gini.persp, gdp.persp, fit.persp, theta=45, phi=20, ticktype="detailed",
       xlab="Gini", ylab="GDP", zlab="Atidute", expand=2/3, 
       shade=0.5) 
 
+## Gam (Generalized additive regression models). 
+
+#5.1 example
+
+library(gam) 
+library(car) 
+data(Duncan) 
+attach(Duncan) 
+
+prestige.gam1 <- gam(prestige~lo(income)+lo(education)) 
+summary(prestige.gam1) 
+
+par(mfrow=c(1,2)) 
+prestige.gam1 <- gam(prestige~lo(income)+lo(education)) 
+inc <- seq(min(income), max(income), len=25) 
+ed <- seq(min(education), max(education), len=25) 
+newdata <- expand.grid(income=inc, education=ed) 
+fit.prestige <- matrix(predict(prestige.gam1, newdata), 25, 25) 
+persp(inc, ed, fit.prestige, theta=45, phi=30, ticktype="detailed", 
+      xlab="Income", ylab="Education", zlab="Prestige", expand=2/3, shade=0.5) 
+
+prestige.gam2 <- gam(prestige~lo(income,education))
+inc <- seq(min(income), max(income), len=25) 
+ed <- seq(min(education), max(education), len=25) 
+newdata <- expand.grid(income=inc, education=ed) 
+fit.prestige <- matrix(predict(prestige.gam2, newdata), 25, 25) 
+persp(inc, ed, fit.prestige, theta=45, phi=30, ticktype="detailed", 
+      xlab="Income", ylab="Education", zlab="Prestige", expand=2/3, shade=0.5) 
+
+## 5.8 exercise 
+
+library(scatterplot3d) 
+library(lattice) 
+data(ethanol) 
+attach(ethanol) 
+
+par(mfrow=c(1,2)) 
+ee <- seq(min(E), max(E), len=25) 
+cc <- seq(min(C), max(C), len=25) 
+newdata <- expand.grid(E=ee, C=cc) 
+scatterplot3d(E, C, NOx, highlight.3d=TRUE, col.axis="blue", col.grid="lightblue", main="ethanol 3d", pch=20) 
+eth.lm=lm(NOx~poly(E,6)+poly(C,3)) 
+fit.lm <- matrix(predict(eth.lm, newdata), 25, 25) 
+persp(ee, cc, fit.lm, theta=30, phi=30, ticktype="detailed", xlab="E", ylab="C", zlab="NOx", expand=2/3, shade=0.5) 
+
+eth.poly2 = gam(NOx~poly(cbind(E,C),degree=2,raw=TRUE)) 
+eth.gam.poly2s=gam(NOx~poly(E,6)+s(C)) 
+eth.gam.poly2=gam(NOx~poly(E,6)+C) 
+eth.gam1=gam(NOx~s(E)+s(C)) 
+eth.gam2=gam(NOx~lo(E,C)) 
+
+anova(eth.poly2, eth.gam.poly2s, test="F") # these models are statistically different
+anova(eth.poly2, eth.gam.poly2, test="F")  # these models are statistically different
+anova(eth.poly2, eth.gam1, test="F")       # these models are statistically different
+anova(eth.poly2, eth.gam2, test="F")       # ? 
+
+anova(eth.gam.poly2s, eth.gam.poly2, test="F") # these models are not statistically different
+anova(eth.gam.poly2s, eth.gam1, test="F")      # these models are statistically different
+anova(eth.gam.poly2s, eth.gam2, test="F")      # these models are statistically different
+
+anova(eth.gam.poly2, eth.gam1, test="F")     # ?
+anova(eth.gam.poly2, eth.poly2, test="F")    # these models are statistically different
+
+anova(eth.gam1, eth.gam2, test="F")          # these models are statistically different
+ 
+## Ploting the graphs
+
+fit.poly2 <- matrix(predict(eth.poly2, newdata), 25, 25)
+persp(ee, cc, fit.poly2, theta=30, phi=30, ticktype="detailed", xlab="E", ylab="C", zlab="NOx", expand=2/3, shade=0.5) 
+
+fit.gam.poly2s <- matrix(predict(eth.gam.poly2s, newdata), 25, 25)
+persp(ee, cc, fit.gam.poly2s, theta=30, phi=30, ticktype="detailed", xlab="E", ylab="C", zlab="NOx", expand=2/3, shade=0.5) 
+
+## 6 chapter 
+## Generalized methods of moments 
+
+g <- function(tet,x) 
+{ 
+  g1 = x-tet[1] 
+  g2 = x^2 - tet[1]^2 - tet[2]^2 
+  g3 = x^3 - tet[1]^3 - 3*tet[1]*tet[2]^2 
+  g4 = x^4 - tet[1]^4 - 6*tet[1]^2*tet[2]^2 - 3*tet[2]^4 
+  f <- cbind(g1,g2,g3,g4) 
+  return(f) 
+} 
+
+Dg <- function(tet,x) 
+{ 
+  G <- matrix(c( -1,-2*tet[1],-3*tet[1]^2 ,-4*tet[1]^3-12*tet[1]*tet[2]^2, 0,
+                 -2*tet[2],-6*tet[1]*tet[2],-12*tet[1]^2*tet[2]-12*tet[2]^3), 
+              nrow=4,ncol=2) 
+  return(G) 
+} 
+
+set.seed(1) 
+n=150 
+x1=rnorm(n,mean=5,sd=2) 
+
+library(gmm) 
+summary(gmm(g,x1,t0 = c(mu = 0, sig = 6), grad = Dg)) 
+
+summary(gmm(g,x1,t0 = c(mu = 0, sig = 0), grad = Dg, type = "iter")) 
+
+## 6.1 exercise 
+
+n=150
+sample <- rchisq(n, 3, ncp = 0)
+sample %>% hist()
+sigma <- sample %>% var()
+mu    <- sample %>% mean() 
+
+mod.gmm <- gmm(g, SP500, t0 =c(mu = 0, sig =  6), grad = Dg)
+summary(mod.gmm) # we reject the hypothesis that 6.1 holds because of J - test 
+                 # thus sample is not normal 
+
+## 6.2 exercise
+library(MASS)
+data(SP500)
+SP500
+
+g.SP <- function(tet,x) 
+{ 
+  g1 = x - tet[1] 
+  g2 = (x - tet[1])^2 - (tet[2]^2)*(tet[3]/(tet[3] - 2))
+  g3 = (x - tet[1])^3
+  g4 = (x - tet[1])^4 - (3*tet[3]^2*tet[2]^4)/((tet[3] - 2)*(tet[3] - 4))
+  f <- cbind(g1,g2,g3,g4) 
+  return(f) 
+} 
+
+Dg <- function(tet,x) 
+{ 
+  G <- matrix(c( -1,-2*tet[1],-3*tet[1]^2 ,-4*tet[1]^3-12*tet[1]*tet[2]^2, 0,
+                 -2*tet[2],-6*tet[1]*tet[2],-12*tet[1]^2*tet[2]-12*tet[2]^3), 
+              nrow=4,ncol=2) 
+  return(G) 
+} 
+
+mod.gmm <- gmm(g.SP, SP500, t0 =c(mu = 0, sig =  1, v = 1), type="iter")
+summary(mod.gmm)
+
+## 6.5 example
+
+library(Ecdat) 
+data(Mroz) 
+head(Mroz) 
+Mro=Mroz[Mroz$wagew!=0,]      # keep only working women 
+mroz=with(Mro,data.frame(lwage=log(wagew),educw,educwm,educwf,expw=experience))
+# keep only selected variables 
+head(mroz) 
+summary(lm(lwage~educw+expw+I(expw^2),data=mroz))    
+
+library(AER) 
+mroz.2SLS = ivreg(lwage ~ expw + I(expw^2) + educw | expw + I(expw^2) + educwm + educwf, data = mroz) 
+summary(mroz.2SLS)   
+
+mroz.gmm=gmm(lwage~expw+I(expw^2)+educw,~expw+I(expw^2)+educwm+educwf,data=mroz) 
+summary(mroz.gmm)   
+
+## 6.4 exercise
+
+#i) 
+
+N=200 
+set.seed(123) 
+eps=rnorm(N) 
+X=runif(N,1,7) 
+Y=numeric(N) 
+Y[1]=0 
+for(i in 2:N) Y[i]=2+0.5*X[i]+0.8*Y[i-1]+eps[i] 
+y=ts(Y) 
+library(dynlm) 
+mod.ols=dynlm(y~X+L(y)) 
+summary(mod.ols) 
+
+#ii) 
+
+arima(y[2:N],c(0,0,0),xreg=cbind(X[2:N],y[1:(N-1)]))  # c(0,0,0) for WN 
+
+#iii)
+
+set.seed(321) 
+eps = arima.sim(N,model=list(ma=.6)) 
+Y = numeric(N) 
+Y[1]=0 
+for(i in 2:N) Y[i]=2+0.5*X[i]+0.8*Y[i-1]+eps[i] 
+y=ts(Y); plot(y) 
+arima(y[2:N],c(0,0,1),xreg=cbind(X[2:N],y[1:(N-1)])) 
+
+mod <- dynlm(L(Y) ~ eps)
+summary(mod)
+
+# iv) 
+
+library(AER) 
+mod.2SLS = ivreg(Y[5:N] ~ X[5:N] + Y[4:(N-1)] | X[5:N] +   Y[3:(N-2)] + Y[2:(N-3)] + Y[1:(N-4)]) 
+summary(mod.2SLS) 
+
+# v) Create a relevant gmm model for iii) case
+
+# Two-stage-least-squares (2SLS), or IV with iid errors. 
+# The model is: 
+# Y(t) = b[0] + b[1]C(t) + b[2]Y(t-1) + e(t) 
+# e(t) is an MA(1) 
+# The instruments are Z(t)={1 C(t) y(t-2) y(t-3) y(t-4)} 
+
+getdat <- function(n) { 
+  e <- arima.sim(n,model=list(ma=.9)) 
+  C <- runif(n,0,5) 
+  Y <- rep(0,n) 
+  Y[1] = 1 + 2*C[1] + e[1] 
+  for (i in 2:n){ 
+    Y[i] = 1 + 2*C[i] + 0.9*Y[i-1] + e[i] 
+  } 
+  Yt <- Y[5:n] 
+  X <- cbind(1,C[5:n],Y[4:(n-1)]) 
+  Z <- cbind(1,C[5:n],Y[3:(n-2)],Y[2:(n-3)],Y[1:(n-4)])  
+  return(list(Y=Yt,X=X,Z=Z)) 
+} 
+d <- getdat(5000) 
+res4 <- gmm(d$Y~d$X-1,~d$Z-1, vcov="iid"); summary(res4) 
 
 
 
