@@ -1078,6 +1078,33 @@ abline(mod, col="red", lwd=2)
 abline(mod.2, col="blue", lwd=2)
 abline(mod.h, col="brown", lwd=2)
 
+## 4.7 exercise
+
+rho <- function(y, tau){
+  n <- length(y)
+  x <- numeric()
+  for(j in 1:n){
+    if(y[j]<0 ) tmp <- 1
+    if(y[j]>=0) tmp <- 0
+    x[j] <- abs(y[j]*(tau - tmp))
+  }
+  return(x)
+}
+
+# Lets create an artificial data set 
+
+z   <- rnorm(100)
+z[5:10] <- c(11, -12, 10, -15, 16, -20) # added outliers
+plot(z)
+abline(h=0, lwd=2, col="blue")
+med1 <- rho(z, 0.5)
+med2 <- rho(z, 0.2)
+med3 <- rho(z, 0.9)
+points(med1, col="red", pch=2)    # triangles 
+points(med2, col="green", pch=3)  # plus signs
+points(med3, col="brown", pch=4)  # x signs 
+
+
 ## 4.8 exercise 
 library(MASS) 
 data <- Duncan
@@ -1101,8 +1128,15 @@ mod.MM <- rlm(prestige ~ income + education, method="MM" ,data=data, psi=psi.bis
 summary(mod.MM)
 
 ## LTS estimation 
+library(robustbase)
+mod.lts <- ltsReg(prestige ~ income + education, data=data)
+summary(mod.lts)
 
+## L1 estimation 
+library(quantreg)
 
+mod.L1 <- rq(prestige ~ income + education, data=data)
+summary(mod.L1)
 
 ########################################################
 ## 5th chapter 
