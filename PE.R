@@ -1078,6 +1078,32 @@ abline(mod, col="red", lwd=2)
 abline(mod.2, col="blue", lwd=2)
 abline(mod.h, col="brown", lwd=2)
 
+## 4.8 exercise 
+library(MASS) 
+data <- Duncan
+
+## OLS
+mod <- lm(prestige ~ income + education, data=data)
+summary(mod)  
+
+## OLS w/out 6 and 16
+mod1 <- lm(prestige ~ income + education, data=data[-c(6, 16), ])
+summary(mod1)  
+
+## Huber M estimator 
+
+mod.H <- rlm(prestige ~ income + education, data=data)
+summary(mod.H)
+
+## bi-square MM estimation
+
+mod.MM <- rlm(prestige ~ income + education, method="MM" ,data=data, psi=psi.bisquare)
+summary(mod.MM)
+
+## LTS estimation 
+
+
+
 ########################################################
 ## 5th chapter 
 ## Non parametric regression
@@ -1456,6 +1482,39 @@ Dg <- function(tet,x)
 mod.gmm <- gmm(g.SP, SP500, t0 =c(mu = 0, sig =  1, v = 1), type="iter")
 summary(mod.gmm)
 
+## 6.3 exercise. Poisson distribution 
+
+x=0:30 
+size=7 
+prob=0.4 
+dnb=dnbinom(x, size, prob) 
+plot(x,dnb,ylim=c(0,0.13),pch=15) 
+(MEAN=size*(1-prob)/prob) 
+lines(x,dpois(x,lambda=MEAN), type="h",lwd=2,col=2) 
+legend(20,0.12,c("Neg.binom", "Poisson"),lty=0:1, pch=c(15,-1),col=1:2) 
+
+rnb <- rnbinom(0:200, size, prob)
+
+g.p <- function(teta, x){
+  g1 <- teta[1]*(1 - teta[2])/teta[2]
+  g2 <- teta[1]*(1 - teta[2])/(teta[2]^2)
+  g3 <- (teta[1]*(teta[2] - 1)*(teta[2] - 2))/(teta[2]^3)
+  g4 <- (3*(1 - teta[2])*(6 - 6*teta[2] + teta[2]^2 + 3*teta[1] - 3*teta[1]*teta[2]))/(teta[2]^4)
+  f  <- cbind(g1, g2, g3, g4)
+  return(f)
+}
+
+#Dg.p <- function(size, prob, x){
+ # col1 <- c((1 - prob)/prob, (1 - prob)/(prob^2))  
+ # col2 <- c((size/(prob^2) - size/prob), -2*size/(prob^3) + size/(prob^2))
+ # Dg   <- matrix(ncol=2, nrow=2) 
+ #  Dg[, 1] <- col1
+ #  Dg[, 2] <- col2
+ #  return(Dg)
+#}
+
+mod <- gmm(g.p, rnb, t0 = c(s = 7, p = 0.4), type="iter")
+
 ## 6.5 example
 
 library(Ecdat) 
@@ -1535,7 +1594,46 @@ getdat <- function(n) {
   return(list(Y=Yt,X=X,Z=Z)) 
 } 
 d <- getdat(5000) 
-res4 <- gmm(d$Y~d$X-1,~d$Z-1, vcov="iid"); summary(res4) 
+res4 <- gmm(d$Y~d$X-1,~d$Z-1, vcov="iid"); 
+summary(res4) 
+
+#6.6 example. Smokers
+
+library(AER) 
+data("CigarettesSW") 
+CigarettesSW$rprice <- with(CigarettesSW, price/cpi) 
+CigarettesSW$rincome <- with(CigarettesSW, income/population/cpi) 
+CigarettesSW$tdiff <- with(CigarettesSW, (taxs - tax)/cpi) 
+c1995 <- subset(CigarettesSW, year == "1995") 
+head(c1995) 
+
+fm_s1 <- lm(log(rprice) ~ tdiff, data = c1995) 
+summary(fm_s1) 
+
+fm_s2 <- lm(log(packs) ~ fitted(fm_s1), data = c1995) 
+summary(fm_s2) 
+
+hc1 <- function(x) vcovHC(x, type = "HC1") 
+fm_ivreg1 <- ivreg(log(packs) ~ log(rprice) | tdiff, data = c1995) 
+coeftest(fm_ivreg1, vcov = hc1) 
+
+fm_ivreg2 <- ivreg(log(packs) ~ log(rprice) + log(rincome) | log(rincome) + tdiff, data = c1995) 
+coeftest(fm_ivreg2, vcov = hc1) 
+
+fm_ivreg3 <- ivreg(log(packs) ~ log(rprice) + log(rincome) | log(rincome) + tdiff + I(tax/cpi), data = c1995) 
+coeftest(fm_ivreg3, vcov = hc1) 
+
+res <- tsls(log(packs)~log(rprice) + log(rincome),~ log(rincome) +  tdiff + I(tax/cpi), data = c1995) 
+summary(res) 
+
+## exercise: create a similar model like fm_ivreg3 using gmm 
+
+fm_gmm <- gmm(log(packs) ~ log(rprice) + log(rincome), ~log(rincome) + tdiff + I(tax/cpi), data = c1995)
+summary(fm_gmm)
+
+# The method of moments solves the system of equations, where the theoretical 4 moments of the 
+# distribution are equated to zero. The theoretical means and variances are changed to the sample 
+# means and variances and the gmm(mu, sigma) is beeing minimized with respect to the two parameters.
 
 
 
